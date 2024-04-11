@@ -2,7 +2,7 @@
 
 For those who frequently use ros2 node info, topic info, echo, hz, param, etc.
 
-![](./images/screenshot.png)
+![](./images/screencapture.gif)
 
 ```sh
 pip install -r requirements.txt
