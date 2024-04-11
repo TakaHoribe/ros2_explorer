@@ -2,7 +2,7 @@
 
 For those who frequently use ros2 node info, topic info, echo, hz, param, etc.
 
-![](./images/screencapture.gif)
+## install and run
 
 ```sh
 pip install -r requirements.txt
@@ -12,5 +12,10 @@ pip install -r requirements.txt
 python3 ./script/ros2_explorer.py
 ```
 
+Then access to `http://127.0.0.1:8050/` in your browser.
 
-Then access to `http://127.0.0.1:8050/`
+<!-- ![](./images/screencapture2.gif) -->
+
+## how this works
+
+<img src="./images/screencapture2.gif" style="border: 1px black solid;">
