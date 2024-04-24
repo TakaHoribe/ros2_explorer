@@ -199,6 +199,7 @@ ros2_node = ROS2InfoNode()
 # Initialize Dash app with external stylesheet
 external_stylesheets = ['https://fonts.googleapis.com/css2?family=Lato:wght@300;700&display=swap']
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app.title = 'ROS 2 Explorer'
 
 # wait for ros connection, otherwise ros information is not available
 time.sleep(1)

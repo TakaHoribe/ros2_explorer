@@ -1,6 +1,8 @@
 # ros2_explorer
 
-For those who frequently use ros2 node info, topic info, echo, hz, param, etc.
+For those who frequently use ros2 node info, topic info, echo, hz, param, etc. You can access these information with just one click.
+
+<img src="./images/screenshot.png" style="border: 1px black solid;">
 
 ## install and run
 
@@ -19,3 +21,4 @@ Then access to `http://127.0.0.1:8050/` in your browser.
 ## how this works
 
 <img src="./images/screencapture2.gif" style="border: 1px black solid;">
+![](2024-04-24-15-44-51.png)
