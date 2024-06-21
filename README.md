@@ -6,12 +6,16 @@ For those who frequently use ros2 node info, topic info, echo, hz, param, etc. Y
 
 ## install and run
 
+**via pipx**
+
+install:
 ```sh
-pip install -r requirements.txt
+pipx install git+ssh://git@github.com/TakaHoribe/ros2_explorer.git
 ```
 
+run:
 ```sh
-python3 ./script/ros2_explorer.py
+ros2_explorer
 ```
 
 Then access to `http://127.0.0.1:8050/` in your browser.
