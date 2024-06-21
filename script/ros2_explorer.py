@@ -596,6 +596,8 @@ def update_node_pubsub_hz(n_intervals, pathname):
 
     return [], []  # Return empty lists if pathname does not include 'node_name='
 
+def main():
+    app.run_server(debug=False)
 
 if __name__ == '__main__':
-    app.run_server(debug=False)
+    main()

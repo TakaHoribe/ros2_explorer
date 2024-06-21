@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ros2_explorer"
+version = "0.1.0"
+dependencies = [
+    "dash==2.7.1",
+    "dash-core-components==2.0.0",
+    "dash-html-components==2.0.0",
+    "dash-table==5.0.0",
+    "regex"
+]
+
+[project.scripts]
+ros2_explorer = "script.ros2_explorer:main"
+
+[tool.setuptools]
+packages = ["script"]
