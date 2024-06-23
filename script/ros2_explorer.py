@@ -55,93 +55,36 @@ def start_threads(command_type, topic_name, func):
         topic_name, thread_controls[command_type][topic_name]), daemon=True)
     thread.start()
 
-def run_ros2_param(node_name, param_control_dict, loop=False):
+def run_command(command, control_dict, max_line=1000, strip_output=True):
     """
-    Run ros2 echo command in a separate thread and put its output in a message.
+    Run a ROS 2 command in a separate thread and store its output in a message list.
     """
-
-    # Not necessary if you run source before running this app
-    # cmd = "source /home/user/hogehoge/setup.bash && ros2 param dump" + node_name"
-    cmd = "ros2 param dump " + node_name
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, shell=True, executable='/bin/bash', text=True)
-
-    max_line = 1000
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, executable='/bin/bash', text=True)
+    control_dict['process'] = process
 
     while True:
         output = process.stdout.readline()
-        if output and param_control_dict['display']:
-            msg = output.rstrip('\n')
-            param_control_dict['messages'].append(msg)
-            if len(param_control_dict['messages']) > max_line:
-                param_control_dict['messages'].pop(0)
-            # logging.info(f"message: {msg}")  # show message on terminal
-        else:
-            time.sleep(0.1)
-
-        if param_control_dict['stop'] is True:
-            logging.info(f"{node_name}: END thank you!")
-            break
-
-
-def run_ros2_echo(topic_name, echo_control_dict, loop=False):
-    """
-    Run ros2 echo command in a separate thread and put its output in a message.
-    """
-
-    # Not necessary if you run source before running this app
-    # cmd = "source /home/user/hogehoge/setup.bash && ros2 topic echo " + topic_name + " --once"
-    cmd_option = "" if loop else " --once"
-    cmd = "ros2 topic echo " + topic_name + cmd_option
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, shell=True, executable='/bin/bash', text=True)
-
-    max_line = 1000
-
-    while True:
-        output = process.stdout.readline()
-        if output and echo_control_dict['display']:
-            msg = output.strip()
-            echo_control_dict['messages'].append(msg)
-            if len(echo_control_dict['messages']) > max_line:
-                echo_control_dict['messages'].pop(0)
-            # logging.info(f"message: {msg}")  # show message on terminal
-        else:
-            time.sleep(0.1)
-
-        if echo_control_dict['stop'] is True:
-            logging.info(f"{topic_name}: END thank you!")
-            break
-
-
-def run_ros2_hz(topic_name, control_dict):
-    """
-    Run ros2 hz command in a separate thread and put its output in a message.
-    """
-
-    # Not necessary if you run source before running this app
-    # cmd = "source /home/user/hogehoge/setup.bash && ros2 topic hz " + topic_name  
-    cmd = "ros2 topic hz " + topic_name
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, shell=True, executable='/bin/bash', text=True)
-
-    max_line = 100
-
-    while True:
-        output = process.stdout.readline()
-
         if output and control_dict['display']:
-            msg = output.strip()
+            msg = output.strip() if strip_output else output.rstrip('\n')
             control_dict['messages'].append(msg)
             if len(control_dict['messages']) > max_line:
                 control_dict['messages'].pop(0)
-            # logging.info(f"message: {msg}")  # show message on terminal
         else:
             time.sleep(0.1)
 
-        if control_dict['stop'] is True:
-            logging.info(f"{topic_name}: END thank you!")
+        if control_dict['stop']:
+            logging.info(f"Stopping thread for command: {command}")
             break
+
+def run_ros2_param(node_name, control_dict):
+    run_command(f"ros2 param dump {node_name}", control_dict, strip_output=False)
+
+def run_ros2_echo(topic_name, control_dict, loop=False):
+    option = "" if loop else " --once"
+    run_command(f"ros2 topic echo {topic_name}{option}", control_dict)
+
+def run_ros2_hz(topic_name, control_dict):
+    run_command(f"ros2 topic hz {topic_name}", control_dict, max_line=100)
 
 # ===================================================================
 # ======================= for ros2 interface ========================
@@ -171,19 +114,8 @@ class ROS2InfoNode(Node):
     def get_nodes_by_topic(self, topic_name):
         pub_nodes = self.get_publishers_info_by_topic(topic_name)
         sub_nodes = self.get_subscriptions_info_by_topic(topic_name)
-        publishers, subscribers = [], []
-        for pub in pub_nodes:
-            if pub.node_name.startswith("_"):
-                continue  # skip for _ros2cli, etc
-            publisher_name = pub.node_namespace + "/" + \
-                pub.node_name if pub.node_namespace != '/' else '/' + pub.node_name
-            publishers.append(publisher_name)
-        for sub in sub_nodes:
-            if sub.node_name.startswith("_"):
-                continue  # skip for _ros2cli, etc
-            subscriber_name = sub.node_namespace + "/" + \
-                sub.node_name if sub.node_namespace != '/' else '/' + sub.node_name
-            subscribers.append(subscriber_name)
+        publishers = [self.format_node_name(pub) for pub in pub_nodes if self.format_node_name(pub) is not None]
+        subscribers = [self.format_node_name(sub) for sub in sub_nodes if self.format_node_name(sub) is not None]
         return {'publishers': publishers, 'subscribers': subscribers}
 
     @staticmethod
@@ -191,6 +123,11 @@ class ROS2InfoNode(Node):
         parts = full_name.split('/')
         return parts[-1], '/'.join(parts[:-1])
 
+    @staticmethod
+    def format_node_name(node_info):
+        if node_info.node_name.startswith("_"):  # skip for _ros2cli, etc
+            return None
+        return f"{node_info.node_namespace}/{node_info.node_name}" if node_info.node_namespace != '/' else f"/{node_info.node_name}"
 
 # Initialize ROS2
 rclpy.init()
