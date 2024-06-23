@@ -22,7 +22,13 @@ Then access to `http://127.0.0.1:8050/` in your browser.
 
 <!-- ![](./images/screencapture2.gif) -->
 
+Note: if you want to run directly, run the following command:
+
+```sh
+pip install -r requirements.txt
+python3 ./script/ros2_explorer.py
+```
+
 ## how this works
 
 <img src="./images/screencapture2.gif" style="border: 1px black solid;">
-![](2024-04-24-15-44-51.png)
