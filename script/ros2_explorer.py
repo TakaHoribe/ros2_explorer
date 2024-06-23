@@ -22,37 +22,39 @@ logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s', date
 # ======================= ros2 command thread =======================
 # ===================================================================
 
-# Global variables for thread management
-thread_controls = {'hz': {}, 'echo': {}, 'param': {}}
+class ThreadManager:
+    def __init__(self):
+        self.thread_controls = {'hz': {}, 'echo': {}, 'param': {}}
 
-def clear_threads(command_type, exclude_topic = None):
-    """
-    Clear separated threads for a specific command type.
-    """
-    global thread_controls
-    topics_to_remove = []
+    def clear_threads(self, command_type, exclude_topic=None):
+        """
+        Clear separated threads for a specific command type.
+        """
+        topics_to_remove = []
 
-    for topic, control in thread_controls[command_type].items():
-        if topic == exclude_topic:
-            continue
-        control['stop'] = True
-        if control['process']:
-            control['process'].terminate()
-        topics_to_remove.append(topic)
+        for topic, control in self.thread_controls[command_type].items():
+            if topic == exclude_topic:
+                continue
+            control['stop'] = True
+            if control['process']:
+                control['process'].terminate()
+            topics_to_remove.append(topic)
 
-    # Remove all topics except the exclude_topic
-    for topic in topics_to_remove:
-        del thread_controls[command_type][topic]
+        # Remove all topics except the exclude_topic
+        for topic in topics_to_remove:
+            del self.thread_controls[command_type][topic]
 
-def start_threads(command_type, topic_name, func):
-    """
-    Start separated threads for a specific command type and target function.
-    """
-    global thread_controls
-    thread_controls[command_type][topic_name] = {'stop': False, 'process': None, 'messages': [], 'display': True }
-    thread = threading.Thread(target=func, args=(
-        topic_name, thread_controls[command_type][topic_name]), daemon=True)
-    thread.start()
+    def start_threads(self, command_type, topic_name, func):
+        """
+        Start separated threads for a specific command type and target function.
+        """
+        self.thread_controls[command_type][topic_name] = {
+            'stop': False, 'process': None, 'messages': [], 'display': True}
+        thread = threading.Thread(target=func, args=(
+            topic_name, self.thread_controls[command_type][topic_name]), daemon=True)
+        thread.start()
+
+thread_manager = ThreadManager()
 
 def run_command(command, control_dict, max_line=1000):
     """
@@ -199,22 +201,19 @@ def update_main_info(pathname):
         """Extract the name from the pathname using a specified key."""
         return pathname.split(f'{name_key}')[-1]
 
-
-    global thread_controls
-
     if 'topic_name=' in pathname:
         topic_name = extract_name('topic_name=')
 
         # Stop the existing thread for the old topic and start a new one for the new topic
-        clear_threads('hz')
+        thread_manager.clear_threads('hz')
 
-        clear_threads('hz', exclude_topic=topic_name)
-        if topic_name not in thread_controls['hz']:
-            start_threads('hz', topic_name, run_ros2_hz)
+        thread_manager.clear_threads('hz', exclude_topic=topic_name)
+        if topic_name not in thread_manager.thread_controls['hz']:
+            thread_manager.start_threads('hz', topic_name, run_ros2_hz)
 
-        clear_threads('echo')
-        if topic_name not in thread_controls['echo']:
-            start_threads('echo', topic_name, run_ros2_echo)
+        thread_manager.clear_threads('echo')
+        if topic_name not in thread_manager.thread_controls['echo']:
+            thread_manager.start_threads('echo', topic_name, run_ros2_echo)
 
         else:
             logging.info(
@@ -228,16 +227,16 @@ def update_main_info(pathname):
         # start topic hz thread for all pubsub topics
         topics = ros2_node.get_topics_by_node(node_name)
         
-        clear_threads('hz')
+        thread_manager.clear_threads('hz')
         if args.hz_all:
             for topic in topics['publishers'] + topics['subscribers']:
                 topic_name = topic[0]
-                if topic_name not in thread_controls['hz']:
-                    start_threads('hz', topic_name, run_ros2_hz)
+                if topic_name not in thread_manager.thread_controls['hz']:
+                    thread_manager.start_threads('hz', topic_name, run_ros2_hz)
         
-        clear_threads('param')
-        if node_name not in thread_controls['param']:
-            start_threads('param', node_name, run_ros2_param)
+        thread_manager.clear_threads('param')
+        if node_name not in thread_manager.thread_controls['param']:
+            thread_manager.start_threads('param', node_name, run_ros2_param)
 
         return generate_main_node_info_div(node_name, topics)
 
@@ -378,8 +377,7 @@ def update_thread_output(thread_control, pathname):
     [dash.dependencies.State('url', 'pathname')]
 )
 def update_hz_output(n_intervals, pathname):
-    global thread_controls
-    return update_thread_output(thread_controls['hz'], pathname)
+    return update_thread_output(thread_manager.thread_controls['hz'], pathname)
 
 
 # --- hz update in topic info page ---
@@ -389,8 +387,7 @@ def update_hz_output(n_intervals, pathname):
     [dash.dependencies.State('url', 'pathname')]
 )
 def update_hz_output(n_intervals, pathname):
-    global thread_controls
-    return update_thread_output(thread_controls['echo'], pathname)
+    return update_thread_output(thread_manager.thread_controls['echo'], pathname)
 
 
 # --- Callback for the "once" button in topic info page ---
@@ -400,14 +397,12 @@ def update_hz_output(n_intervals, pathname):
     [dash.dependencies.State('url', 'pathname')]
 )
 def reset_echo(n_clicks, pathname):
-    global thread_controls
-
     if 'topic_name=' in pathname and n_clicks > 0:  # Check if the button was clicked
         topic_name = pathname.split('topic_name=')[-1]
 
         # Clear the echo threads and start a new one
-        clear_threads('echo')
-        start_threads('echo', topic_name, run_ros2_echo)
+        thread_manager.clear_threads('echo')
+        thread_manager.start_threads('echo', topic_name, run_ros2_echo)
 
     # Return is required for a callback, but in this case, it does nothing
     return None
@@ -419,18 +414,16 @@ def reset_echo(n_clicks, pathname):
     [dash.dependencies.State('url', 'pathname')]
 )
 def toggle_loop(n_clicks, pathname):
-    global thread_controls
-
     # Toggle state: odd clicks mean looping, even clicks mean not looping. 0 means initial time.
     clicked = n_clicks % 2 == 1
     if 'topic_name=' in pathname:
         topic_name = pathname.split('topic_name=')[-1]
 
         if clicked:
-            clear_threads('echo')
-            start_threads('echo', topic_name, lambda tn, ctrl_dict: run_ros2_echo(tn, ctrl_dict, loop=True))
+            thread_manager.clear_threads('echo')
+            thread_manager.start_threads('echo', topic_name, lambda tn, ctrl_dict: run_ros2_echo(tn, ctrl_dict, loop=True))
         elif n_clicks != 0:  # if this is not the initial time
-            thread_controls['echo'][topic_name]['display'] = False
+            thread_manager.thread_controls['echo'][topic_name]['display'] = False
 
     # Change color based on whether it's an odd or even click
     return {'backgroundColor': 'darkgray'} if clicked else {}
@@ -480,14 +473,11 @@ def generate_main_node_info_div(node_name, topics):
     [dash.dependencies.State('url', 'pathname')]
 )
 def update_hz_output(n_intervals, pathname):
-    global thread_controls
-    return update_thread_output(thread_controls['param'], pathname)
+    return update_thread_output(thread_manager.thread_controls['param'], pathname)
 
 
 def extract_rate_from_hz_message(topic_name):
-    global thread_controls
-
-    hz_control = thread_controls.get('hz', {})
+    hz_control = thread_manager.thread_controls.get('hz', {})
     topic_control = hz_control.get(topic_name, {})
     hz_messages = topic_control.get('messages', [])
 
@@ -511,7 +501,7 @@ def update_node_pubsub_hz(n_intervals, pathname):
         return pathname.split(f'{name_key}')[-1]
     
 
-    logging.info(f"thread_controls len = {len(thread_controls['echo'])}, {len(thread_controls['hz'])}")
+    logging.info(f"thread_controls len = {len(thread_manager.thread_controls['echo'])}, {len(thread_manager.thread_controls['hz'])}")
 
     if 'node_name=' in pathname:
         node_name = extract_name('node_name=')
