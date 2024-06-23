@@ -18,7 +18,6 @@ args = parser.parse_args()
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
-
 # ===================================================================
 # ======================= ros2 command thread =======================
 # ===================================================================
@@ -442,37 +441,37 @@ def toggle_loop(n_clicks, pathname):
 # ===================================================================
 def generate_main_node_info_div(node_name, topics):
 
-        publishers = [html.A(f"{topic[0]} [{topic[1][0]}]", href=f"/topic_name={topic[0]}")
-                      for topic in topics['publishers']]
-        subscribers = [html.A(f"{topic[0]} [{topic[1][0]}]", href=f"/topic_name={topic[0]}")
-                       for topic in topics['subscribers']]
-        
-        pre_style = {'word-wrap': 'break-word', 'white-space': 'pre-wrap', 'margin-left': '1rem', 'margin-right': '1rem'}
+    publishers = [html.A(f"{topic[0]} [{topic[1][0]}]", href=f"/topic_name={topic[0]}")
+                    for topic in topics['publishers']]
+    subscribers = [html.A(f"{topic[0]} [{topic[1][0]}]", href=f"/topic_name={topic[0]}")
+                    for topic in topics['subscribers']]
 
-        children = [
+    pre_style = {'word-wrap': 'break-word', 'white-space': 'pre-wrap', 'margin-left': '1rem', 'margin-right': '1rem'}
+
+    children = [
+        html.Div([
+        html.H3(f"ros2 node info {node_name}", style={'margin-left': '1em'}),
+        html.Div([
+            html.H4("Publishing Topics:", style={'margin-left': '2em'}),
+            html.Ul([html.Li(publisher) for publisher in publishers], id='publishers-list'),
+            html.H4("Subscribing Topics:", style={'margin-left': '2em'}),
+            html.Ul([html.Li(subscriber) for subscriber in subscribers], id='subscribers-list'),
+        ], style={'overflowY': 'auto', 'maxHeight': '30em', 'margin': '1em'}),
+        ], style={'width': '70%', 'float': 'left'}),
+        html.Div([
+            html.H3("ros2 param dump", style={'margin-left': '1em'}),
             html.Div([
-            html.H3(f"ros2 node info {node_name}", style={'margin-left': '1em'}),
-            html.Div([
-                html.H4("Publishing Topics:", style={'margin-left': '2em'}),
-                html.Ul([html.Li(publisher) for publisher in publishers], id='publishers-list'),
-                html.H4("Subscribing Topics:", style={'margin-left': '2em'}),
-                html.Ul([html.Li(subscriber) for subscriber in subscribers], id='subscribers-list'),
+                html.Pre(id='param-output', children='Loading...', style=pre_style),
             ], style={'overflowY': 'auto', 'maxHeight': '30em', 'margin': '1em'}),
-            ], style={'width': '70%', 'float': 'left'}),
-            html.Div([
-                html.H3("ros2 param dump", style={'margin-left': '1em'}),
-                html.Div([
-                    html.Pre(id='param-output', children='Loading...', style=pre_style),
-                ], style={'overflowY': 'auto', 'maxHeight': '30em', 'margin': '1em'}),
-            ], style={'width': '30%', 'float': 'left'}),
-            dcc.Interval(id='update-interval-node-page-param', interval=200, n_intervals=0),
-        ]
+        ], style={'width': '30%', 'float': 'left'}),
+        dcc.Interval(id='update-interval-node-page-param', interval=200, n_intervals=0),
+    ]
 
-        # Conditionally add Interval component
-        if args.hz_all:
-            children.append(dcc.Interval(id='interval-update-node-page-pubsub-hz', interval=200, n_intervals=0))
+    # Conditionally add Interval component
+    if args.hz_all:
+        children.append(dcc.Interval(id='interval-update-node-page-pubsub-hz', interval=200, n_intervals=0))
 
-        return html.Div(children)
+    return html.Div(children)
 
 # --- param update in node info page ---
 @app.callback(
