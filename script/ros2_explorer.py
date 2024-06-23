@@ -55,7 +55,7 @@ def start_threads(command_type, topic_name, func):
         topic_name, thread_controls[command_type][topic_name]), daemon=True)
     thread.start()
 
-def run_command(command, control_dict, max_line=1000, strip_output=True):
+def run_command(command, control_dict, max_line=1000):
     """
     Run a ROS 2 command in a separate thread and store its output in a message list.
     """
@@ -65,7 +65,7 @@ def run_command(command, control_dict, max_line=1000, strip_output=True):
     while True:
         output = process.stdout.readline()
         if output and control_dict['display']:
-            msg = output.strip() if strip_output else output.rstrip('\n')
+            msg = output.rstrip('\n')
             control_dict['messages'].append(msg)
             if len(control_dict['messages']) > max_line:
                 control_dict['messages'].pop(0)
@@ -77,7 +77,7 @@ def run_command(command, control_dict, max_line=1000, strip_output=True):
             break
 
 def run_ros2_param(node_name, control_dict):
-    run_command(f"ros2 param dump {node_name}", control_dict, strip_output=False)
+    run_command(f"ros2 param dump {node_name}", control_dict)
 
 def run_ros2_echo(topic_name, control_dict, loop=False):
     option = "" if loop else " --once"
