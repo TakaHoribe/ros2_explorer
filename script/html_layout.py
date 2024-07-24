@@ -40,7 +40,7 @@ def generate_main_layout():
         html.Div(id='dummy-output', style={'display': 'none'}),
     ])
 
-def generate_pubsub_layout(topic_name, publishers, subscribers):
+def generate_pubsub_layout(topic_name, topic_type, publishers, subscribers):
 
     pre_style = {'word-wrap': 'break-word', 'white-space': 'pre-wrap', 'margin-left': '1rem', 'margin-right': '1rem'}
 
@@ -49,6 +49,7 @@ def generate_pubsub_layout(topic_name, publishers, subscribers):
             html.H3(f"ros2 topic info {topic_name}",
                     style={'margin-left': '1em'}),
             html.Div([
+                html.H4(f"Type: {topic_type}", style={'margin-left': '2em'}),
                 html.H4("Publishers:", style={'margin-left': '2em'}),
                 html.Ul([html.Li(publisher) for publisher in publishers]),
                 html.H4("Subscribers:", style={'margin-left': '2em'}),

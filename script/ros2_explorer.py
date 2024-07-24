@@ -272,6 +272,7 @@ def update_node_list(n_intervals, node_pattern):
 # ===================================================================
 def generate_main_topic_info_div(topic_name):
         nodes = ros2_node.get_nodes_by_topic(topic_name)
+        topic_type = next((tt[0] for tn, tt in ros2_node.get_all_topics() if tn == topic_name), "Unknown")
 
         def create_node_links(node_list):
             """Create HTML links for each node in the node list."""
@@ -280,7 +281,7 @@ def generate_main_topic_info_div(topic_name):
 
         publishers, subscribers = create_node_links(nodes['publishers']), create_node_links(nodes['subscribers'])
 
-        return html_layout.generate_pubsub_layout(topic_name, publishers, subscribers)
+        return html_layout.generate_pubsub_layout(topic_name, topic_type, publishers, subscribers)
 
 def update_thread_output(thread_control, pathname):
     if 'topic_name=' in pathname:
