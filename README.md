@@ -18,7 +18,7 @@ run:
 ros2_explorer
 ```
 
-Then access to `http://127.0.0.1:8050/` in your browser.
+The application will automatically open in your browser, otherwise access to `http://127.0.0.1:8050/` manually.
 
 <!-- ![](./images/screencapture2.gif) -->
 

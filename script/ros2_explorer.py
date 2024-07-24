@@ -9,6 +9,7 @@ import subprocess
 import threading
 import logging
 import argparse
+import webbrowser
 
 import sys
 import os
@@ -18,6 +19,7 @@ import html_layout
 # Set up argument parser
 parser = argparse.ArgumentParser(description='ROS 2 Node and Topic Explorer')
 parser.add_argument('--hz_all', action='store_true', help='Enable Hz update for node page')
+parser.add_argument('--no-browser', action='store_true', help='Do not automatically open the web browser')
 args = parser.parse_args()
 
 # Configure logging
@@ -460,6 +462,11 @@ def update_node_pubsub_hz(n_intervals, pathname):
     return [], []  # Return empty lists if pathname does not include 'node_name='
 
 def main():
+    # Open the web browser to the Dash app URL
+    if not args.no_browser:
+        webbrowser.open('http://127.0.0.1:8050/')
+
+    # Run application
     app.run_server(debug=False)
 
 if __name__ == '__main__':
