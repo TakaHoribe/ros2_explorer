@@ -1,6 +1,7 @@
 import dash
 from dash import html, dcc
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
+import dash_cytoscape as cyto
 import rclpy
 from rclpy.node import Node
 import re
@@ -10,6 +11,7 @@ import threading
 import logging
 import argparse
 import webbrowser
+import random
 
 import sys
 import os
@@ -21,6 +23,10 @@ parser = argparse.ArgumentParser(description='ROS 2 Node and Topic Explorer')
 parser.add_argument('--hz_all', action='store_true', help='Enable Hz update for node page')
 parser.add_argument('--no-browser', action='store_true', help='Do not automatically open the web browser')
 args = parser.parse_args()
+
+previous_node_name = None
+previous_topic_name = None
+graph_elements = []
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
@@ -218,6 +224,64 @@ def update_main_info(pathname):
 
     return html.H2("Select a topic or node to see the information.")
 
+# ===================================================================
+# ======================= Graph manipulation ========================
+# ===================================================================
+def add_node_to_graph(node_id, elements):
+    print(f"Elements before adding node: {elements}")
+    print(f"Adding node {node_id}")
+    if not any(ele['data']['id'] == node_id for ele in elements if 'source' not in ele['data']):
+        new_node = {
+            'data': {'id': node_id, 'label': node_id},
+            'position': {'x': random.uniform(0, 500), 'y': random.uniform(0, 500)}
+        }
+        elements.append(new_node)
+    print(f"Elements after adding node: {elements}")
+
+def add_edge_to_graph(source, target, topic_name, elements):
+    if source == target:
+        print(f"Source and target are the same ({source}); edge will not be added.")
+        return
+
+    print(f"Attempting to add edge from {source} to {target} for topic {topic_name}")
+    print(f"Elements before adding edge: {elements}")
+
+    # Get topics for both nodes
+    source_topics = ros2_node.get_topics_by_node(source)
+    target_topics = ros2_node.get_topics_by_node(target)
+
+    # Determine if the source has the topic as a publisher and the target as a subscriber
+    is_source_publisher = any(topic[0] == topic_name for topic in source_topics['publishers'])
+    is_target_subscriber = any(topic[0] == topic_name for topic in target_topics['subscribers'])
+
+    # Determine if the target has the topic as a publisher and the source as a subscriber
+    is_target_publisher = any(topic[0] == topic_name for topic in target_topics['publishers'])
+    is_source_subscriber = any(topic[0] == topic_name for topic in source_topics['subscribers'])
+
+    # Add edge in the correct direction
+    if is_source_publisher and is_target_subscriber:
+        correct_source, correct_target = source, target
+    elif is_target_publisher and is_source_subscriber:
+        correct_source, correct_target = target, source
+    else:
+        print(f"No valid publisher-subscriber relationship for topic {topic_name} between {source} and {target}.")
+        return
+
+    # Only check edges when looking for duplicates
+    if not any('source' in ele['data'] and ele['data']['source'] == correct_source and ele['data']['target'] == correct_target for ele in elements):
+        new_edge = {
+            'data': {
+                'source': correct_source,
+                'target': correct_target,
+                'label': f'{topic_name}'
+            }
+        }
+        elements.append(new_edge)
+        print(f"Edge from {correct_source} to {correct_target} for topic {topic_name} added successfully.")
+    else:
+        print(f"Edge from {correct_source} to {correct_target} for topic {topic_name} already exists.")
+
+    print(f"Elements after attempting to add edge: {elements}")
 
 
 # ===================================================================
@@ -373,11 +437,11 @@ def toggle_loop(n_clicks, pathname):
 # =================== For ros2 node info division ===================
 # ===================================================================
 def generate_main_node_info_div(node_name, topics):
-
+    global previous_node_name
     publishers = [html.A(f"{topic[0]} [{topic[1][0]}]", href=f"/topic_name={topic[0]}")
-                    for topic in topics['publishers']]
+                  for topic in topics['publishers']]
     subscribers = [html.A(f"{topic[0]} [{topic[1][0]}]", href=f"/topic_name={topic[0]}")
-                    for topic in topics['subscribers']]
+                   for topic in topics['subscribers']]
 
     pre_style = {'word-wrap': 'break-word', 'white-space': 'pre-wrap', 'margin-left': '1rem', 'margin-right': '1rem'}
 
@@ -414,7 +478,6 @@ def generate_main_node_info_div(node_name, topics):
 )
 def update_hz_output(n_intervals, pathname):
     return update_thread_output(thread_manager.thread_controls['param'], pathname)
-
 
 def extract_rate_from_hz_message(topic_name):
     hz_control = thread_manager.thread_controls.get('hz', {})
@@ -461,6 +524,67 @@ def update_node_pubsub_hz(n_intervals, pathname):
         return updated_publishers, updated_subscribers
 
     return [], []  # Return empty lists if pathname does not include 'node_name='
+
+
+# ===================================================================
+# ===================== For node graph division =====================
+# ===================================================================
+@app.callback(
+    Output('cytoscape', 'elements'),
+    [Input('url', 'pathname')]
+)
+def update_graph_elements(pathname):
+    global previous_node_name, previous_topic_name, graph_elements
+
+    # Example logic to determine node_name and topic_name from pathname
+    if 'node_name=' in pathname:
+        node_name = pathname.split('node_name=')[-1]
+
+        # Add the current node to the graph
+        add_node_to_graph(node_name, graph_elements)
+
+        # Add an edge from the previous node to the current node
+        if previous_node_name is not None and previous_topic_name is not None:
+            add_edge_to_graph(previous_node_name, node_name, previous_topic_name, graph_elements)
+
+        # Update the previous node and topic name
+        previous_node_name = node_name
+
+    if 'topic_name=' in pathname:
+        topic_name = pathname.split('topic_name=')[-1]
+        previous_topic_name = topic_name
+
+    return graph_elements
+
+
+@app.callback(
+    Output('cytoscape', 'layout'),
+    [Input('btn-home', 'n_clicks'),
+     Input('btn-fit', 'n_clicks'),
+     Input('btn-reset', 'n_clicks')],
+    [State('cytoscape', 'layout')]
+)
+def update_graph_layout(n_clicks_home, n_clicks_fit, n_clicks_reset, current_layout):
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        return current_layout
+
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    if button_id == 'btn-home':
+        # Reset the view to the initial cose layout
+        return {'name': 'cose'}
+
+    elif button_id == 'btn-fit':
+        # Adjust the view to fit all nodes
+        return {'name': 'preset'}
+
+    elif button_id == 'btn-reset':
+        # Clear selections and reset layout
+        return {'name': 'cose'}
+
+    return current_layout
 
 def main():
     # Open the web browser to the Dash app URL

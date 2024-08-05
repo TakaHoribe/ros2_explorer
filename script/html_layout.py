@@ -1,12 +1,13 @@
 from dash import html, dcc
+import dash_cytoscape as cyto
 
 def generate_main_layout():
-    default_div_style = {'maxHeight': '25em', 'overflowY': 'scroll', 'border': '1px solid black', 'marginBottom': '2em'}
+    default_div_style = {'maxHeight': '20em', 'overflowY': 'scroll', 'border': '1px solid black', 'marginBottom': '2em'}
     default_input_style = {'marginBottom': '10px', 'height': '2.0em', 'width': '50em'}
 
     pubsub_info_style = default_div_style.copy()
-    pubsub_info_style['minHeight'] = '30em'
-    pubsub_info_style['maxHeight'] = '40em'
+    pubsub_info_style['minHeight'] = '25em'
+    pubsub_info_style['maxHeight'] = '30em'
     pubsub_info_style['overflowY'] = 'hidden'
 
     return html.Div(style={'padding': '20px', 'marginBottom': '10px', 'font-family': 'Lato', 'fontWeight': '300'}, children=[
@@ -35,6 +36,68 @@ def generate_main_layout():
         # timer update for node/topic list
         dcc.Interval(id='interval-update-node-topic-list',
                     interval=10*1000, n_intervals=0),
+
+        # Node Graph Section
+        html.Hr(),
+        html.Div([
+            html.H2("Node Graph"),
+            html.Div([
+                html.Button('Home', id='btn-home', n_clicks=0),
+                html.Button('Fit', id='btn-fit', n_clicks=0),
+                html.Button('Reset', id='btn-reset', n_clicks=0),
+            ], style={'margin-bottom': '10px'}),
+            cyto.Cytoscape(
+                id='cytoscape',
+                elements=[],
+                style={'width': '100%', 'height': '600px'},
+                layout={'name': 'cose'},  # Use 'cose' layout for automatic arrangement
+                stylesheet=[
+                    {
+                        'selector': 'node',
+                        'style': {
+                            'content': 'data(label)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'color': 'black',  # Text color
+                            'background-color': '#FFFFFF',  # Background color
+                            'width': '80px',  # Node width
+                            'height': '80px',  # Node height
+                            'font-size': '14px',  # Font size
+                            'padding': '10px',  # Padding for better readability
+                            'border-color': '#0074D9',
+                            'border-width': '2px',
+                            'border-style': 'solid',
+                        }
+                    },
+                    {
+                        'selector': 'edge',
+                        'style': {
+                            'content': 'data(label)',
+                            'line-color': '#0074D9',
+                            'width': 2,
+                            'font-size': '12px',
+                            'color': 'black',
+                            'text-rotation': 'none',
+                            'text-wrap': 'wrap',
+                            'text-max-width': '100px',
+                            'text-background-color': '#FFFFFF',
+                            'text-background-opacity': 1,
+                            'text-margin-y': -10,
+                            'target-arrow-color': '#0074D9',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier'  # Optional for smooth curves
+                        }
+                    },
+                    {
+                        'selector': ':selected',
+                        'style': {
+                            'background-color': '#FF4136',
+                            'line-color': '#FF4136'
+                        }
+                    }
+                ]
+            )
+        ]),
 
         # This Div is hidden and used only for callback purposes
         html.Div(id='dummy-output', style={'display': 'none'}),
